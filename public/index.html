@@ -1,0 +1,611 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+  <title>D&D AI — Painel do Mestre</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <aside class="sidebar">
+    <h1>D&D <span>AI</span></h1>
+    <p class="subtitle">O grimório do Mestre</p>
+
+    <nav>
+      <button class="nav-item active">
+        ⚔️ Combate
+      </button>
+      <button class="nav-item" disabled>
+        📜 Campanhas (em breve)
+      </button>
+      <button class="nav-item" disabled>
+        🛡️ Personagens (em breve)
+      </button>
+      <button class="nav-item" disabled>
+        🐉 Narrador IA (em breve)
+      </button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <label for="versao">Sistema de regras</label>
+      <select id="versao">
+        <option value="2014">D&D 5e — 2014</option>
+        <option value="2024">D&D 5e — 2024</option>
+      </select>
+      <small>
+        Seleção visual; regras específicas
+        serão integradas depois.
+      </small>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">PAINEL DO MESTRE</p>
+        <h2>Gerenciador de Combate</h2>
+      </div>
+      <span class="status">● Servidor local</span>
+    </header>
+
+<!-- D&D AI v0.6 — CADASTRO DE PERSONAGENS -->
+<section class="panel character-panel">
+  <div class="section-heading">
+    <h3>📜 Criar Personagem</h3>
+    <span class="character-edition">D&D 5e — 2014</span>
+  </div>
+
+  <form id="formPersonagem">
+    <div class="character-form-grid">
+      <label>
+        Nome
+        <input
+          id="charNome"
+          type="text"
+          placeholder="Nome do aventureiro"
+          required
+        >
+      </label>
+
+      <label>
+        Raça
+        <input
+          id="charRaca"
+          type="text"
+          placeholder="Ex.: Anão"
+          required
+        >
+      </label>
+
+      <label>
+        Classe
+        <input
+          id="charClasse"
+          type="text"
+          placeholder="Ex.: Guerreiro"
+          required
+        >
+      </label>
+
+      <label>
+        Nível
+        <input
+          id="charNivel"
+          type="number"
+          min="1"
+          max="20"
+          value="1"
+          required
+        >
+      </label>
+    </div>
+
+    <h4>Atributos</h4>
+
+    <div class="character-attributes-grid">
+      <label>Força
+        <input id="charForca" type="number"
+          min="1" max="30" value="10" required>
+      </label>
+
+      <label>Destreza
+        <input id="charDestreza" type="number"
+          min="1" max="30" value="10" required>
+      </label>
+
+      <label>Constituição
+        <input id="charConstituicao" type="number"
+          min="1" max="30" value="10" required>
+      </label>
+
+      <label>Inteligência
+        <input id="charInteligencia" type="number"
+          min="1" max="30" value="10" required>
+      </label>
+
+      <label>Sabedoria
+        <input id="charSabedoria" type="number"
+          min="1" max="30" value="10" required>
+      </label>
+
+      <label>Carisma
+        <input id="charCarisma" type="number"
+          min="1" max="30" value="10" required>
+      </label>
+    </div>
+
+    <h4>Informações de Combate</h4>
+
+    <div class="character-form-grid">
+      <label>
+        Pontos de Vida Máximos
+        <input id="charPV" type="number"
+          min="1" value="10" required>
+      </label>
+
+      <label>
+        Classe de Armadura
+        <input id="charCA" type="number"
+          min="0" value="10" required>
+      </label>
+
+      <label>
+        Deslocamento (metros)
+        <input id="charDeslocamento" type="number"
+          min="0" step="0.5" value="9" required>
+      </label>
+    </div>
+
+    <button type="submit" class="primary">
+      ⚔️ Salvar Personagem
+    </button>
+  </form>
+
+  <p id="charMensagem" role="status"></p>
+</section>
+
+<!-- D&D AI v0.6 — BIBLIOTECA DE PERSONAGENS -->
+<section class="panel character-library">
+  <div class="section-heading">
+    <h3>📚 Biblioteca de Personagens</h3>
+    <button
+      id="atualizarBiblioteca"
+      class="secondary"
+      type="button"
+    >
+      Atualizar biblioteca
+    </button>
+  </div>
+
+  <p id="bibliotecaStatus" role="status">
+    Carregando personagens...
+  </p>
+
+  <div
+    id="bibliotecaPersonagens"
+    class="character-library-grid"
+  ></div>
+</section>
+
+<!-- D&D AI v0.6 — FICHA DETALHADA -->
+<section
+  id="painelFichaDetalhada"
+  class="panel character-detail-panel"
+  hidden
+>
+  <div class="section-heading">
+    <h3>📜 Ficha do Personagem</h3>
+    <button
+      id="fecharFicha"
+      class="secondary"
+      type="button"
+    >
+      ✕ Fechar
+    </button>
+  </div>
+
+  <div id="conteudoFichaDetalhada"></div>
+</section>
+
+<!-- D&D AI v0.6 — EDITOR DE PERSONAGENS -->
+<section id="painelEditarPersonagem" class="panel character-panel" hidden>
+  <div class="section-heading">
+    <h3>✏️ Editar Personagem</h3>
+    <button id="fecharEditorPersonagem" class="secondary" type="button">
+      ✕ Cancelar
+    </button>
+  </div>
+
+  <form id="formEditarPersonagem">
+    <div class="character-form-grid">
+      <label>Nome
+        <input id="editNome" type="text" required>
+      </label>
+
+      <label>Raça
+        <input id="editRaca" type="text" required>
+      </label>
+
+      <label>Classe
+        <input id="editClasse" type="text" required>
+      </label>
+
+      <label>Nível
+        <input id="editNivel" type="number" min="1" max="20" required>
+      </label>
+    </div>
+
+    <h4>Atributos</h4>
+
+    <div class="character-attributes-grid">
+      <label>Força
+        <input id="editForca" type="number" min="1" max="30" required>
+      </label>
+      <label>Destreza
+        <input id="editDestreza" type="number" min="1" max="30" required>
+      </label>
+      <label>Constituição
+        <input id="editConstituicao" type="number" min="1" max="30" required>
+      </label>
+      <label>Inteligência
+        <input id="editInteligencia" type="number" min="1" max="30" required>
+      </label>
+      <label>Sabedoria
+        <input id="editSabedoria" type="number" min="1" max="30" required>
+      </label>
+      <label>Carisma
+        <input id="editCarisma" type="number" min="1" max="30" required>
+      </label>
+    </div>
+
+    <h4>Informações de Combate</h4>
+
+    <div class="character-form-grid">
+      <label>PV Máximos
+        <input id="editPVMaximo" type="number" min="1" required>
+      </label>
+
+      <label>PV Atuais
+        <input id="editPVAtual" type="number" min="0" required>
+      </label>
+
+      <label>Classe de Armadura
+        <input id="editCA" type="number" min="0" required>
+      </label>
+
+      <label>Deslocamento (metros)
+        <input id="editDeslocamento" type="number" min="0" step="0.5" required>
+      </label>
+    </div>
+
+    <button type="submit" class="primary">
+      💾 Salvar Alterações
+    </button>
+  </form>
+
+  <p id="mensagemEditarPersonagem" role="status"></p>
+</section>
+
+<!-- D&D AI v0.6 — CRIAR BATALHA COM FICHAS -->
+<section class="panel">
+  <div class="section-heading">
+    <h3>⚔️ Batalha com Personagens Salvos</h3>
+    <button
+      id="atualizarSelecaoBatalha"
+      class="secondary"
+      type="button"
+    >
+      Atualizar personagens
+    </button>
+  </div>
+
+  <p>
+    Selecione os personagens da biblioteca
+    e informe suas iniciativas.
+  </p>
+
+  <label>
+    Nome da batalha
+    <input
+      id="novaBatalhaFichasId"
+      type="text"
+      placeholder="Ex.: encontro-floresta"
+    >
+  </label>
+
+  <div
+    id="selecaoPersonagensBatalha"
+    class="battle-character-selection"
+  ></div>
+
+  <p id="mensagemBatalhaFichas" role="status"></p>
+
+  <button
+    id="criarBatalhaComFichas"
+    class="primary"
+    type="button"
+  >
+    ⚔️ Iniciar Batalha
+  </button>
+</section>
+
+<!-- GERENCIADOR DE BATALHAS SALVAS -->
+<section class="panel">
+  <div class="section-heading">
+    <h3>📜 Batalhas Salvas</h3>
+
+    <button
+      id="listarBatalhas"
+      class="secondary"
+    >
+      Atualizar lista
+    </button>
+  </div>
+
+  <div
+    id="listaBatalhas"
+    class="saved-battles"
+  >
+    Carregando batalhas...
+  </div>
+</section>
+
+    <section class="panel">
+      <h3>Nova batalha</h3>
+
+      <div class="form-grid">
+        <label>
+          Identificador
+          <input id="batalhaId"
+                 placeholder="Ex: batalha1">
+        </label>
+
+        <label>
+          Participantes
+          <textarea id="participantes"
+                    rows="5">[
+  {
+    "nome": "Guerreiro",
+    "pv": 30,
+    "ca": 16,
+    "iniciativa": 15,
+    "deslocamento": 9
+  },
+  {
+    "nome": "Goblin",
+    "pv": 15,
+    "ca": 13,
+    "iniciativa": 12,
+    "deslocamento": 9
+  }
+]</textarea>
+        </label>
+      </div>
+
+      <button id="criarBatalha" class="primary">
+        Criar batalha
+      </button>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <h3>Batalha ativa</h3>
+        <button id="atualizar" class="secondary">
+          Atualizar
+        </button>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          ID da batalha
+          <input id="batalhaAtual"
+                 placeholder="Ex: batalha1">
+        </label>
+        <button id="carregar" class="secondary">
+          Carregar batalha
+        </button>
+      </div>
+
+      <div id="resumo" class="summary">
+        Nenhuma batalha carregada.
+      </div>
+
+      <div id="personagens" class="characters"></div>
+
+      <button id="proximoTurno" class="primary">
+        Próximo turno →
+      </button>
+    </section>
+
+    <section class="panel">
+      <h3>Ações de combate</h3>
+
+      <div class="form-grid">
+        <label>
+          Personagem
+          <select id="personagem"></select>
+        </label>
+
+        <label>
+          Alvo
+          <select id="alvo"></select>
+        </label>
+
+        <label>
+          Bônus de ataque
+          <input id="bonusAtaque"
+                 type="number" value="5">
+        </label>
+
+        <label>
+          Quantidade de dados
+          <input id="quantidadeDados"
+                 type="number" value="1">
+        </label>
+
+        <label>
+          Faces do dado
+          <input id="ladosDado"
+                 type="number" value="8">
+        </label>
+
+        <label>
+          Bônus de dano
+          <input id="bonusDano"
+                 type="number" value="3">
+        </label>
+
+        <label>
+          Movimento (metros)
+          <input id="distancia"
+                 type="number"
+                 value="3" min="0.1" step="0.5">
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="atacar" class="primary">
+          ⚔️ Atacar
+        </button>
+        <button id="acaoBonus" class="secondary">
+          ✨ Ação bônus
+        </button>
+        <button id="reacao" class="secondary">
+          🛡️ Reação
+        </button>
+        <button id="mover" class="secondary">
+          👣 Mover
+        </button>
+      </div>
+    </section>
+
+<!-- PAINEL AVANÇADO DO MESTRE -->
+<section class="panel master-panel">
+  <div class="section-heading">
+    <h3>👑 Painel do Mestre</h3>
+    <span class="master-tag">CONTROLE DO DM</span>
+  </div>
+
+  <p class="master-description">
+    Gerencie os recursos dos personagens durante
+    a batalha. As alterações serão registradas
+    no histórico de combate.
+  </p>
+
+  <div class="form-grid">
+    <label>
+      Personagem
+      <select id="mestrePersonagem"></select>
+    </label>
+
+    <label>
+      Tipo de ajuste
+      <select id="mestreTipo">
+        <option value="pv">Pontos de vida</option>
+        <option value="movimentoRestante">
+          Movimento restante
+        </option>
+        <option value="reacaoDisponivel">
+          Reação disponível
+        </option>
+      </select>
+    </label>
+
+    <label id="mestreValorContainer">
+      Novo valor
+      <input
+        id="mestreValor"
+        type="number"
+        min="0"
+        value="10"
+      >
+    </label>
+
+    <label id="mestreReacaoContainer"
+           style="display: none;">
+      Disponibilidade da reação
+      <select id="mestreReacao">
+        <option value="true">Disponível</option>
+        <option value="false">Utilizada</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="actions">
+    <button id="mestreAplicar" class="primary">
+      Aplicar ajuste
+    </button>
+  </div>
+
+<div class="master-tools">
+  <h4>⚔️ Intervenções rápidas</h4>
+
+  <label>
+    Quantidade de PV
+    <input
+      id="mestreQuantidade"
+      type="number"
+      min="1"
+      step="1"
+      value="5"
+    >
+  </label>
+
+  <div class="actions">
+    <button id="mestreCurar" class="secondary">
+      💚 Curar
+    </button>
+
+    <button id="mestreDano" class="secondary">
+      ⚔️ Aplicar dano
+    </button>
+  </div>
+
+  <h4>🔄 Restaurar recursos do turno</h4>
+
+  <div class="actions">
+    <button id="mestreRestaurarAcao" class="secondary">
+      Restaurar ação principal
+    </button>
+
+    <button id="mestreRestaurarBonus" class="secondary">
+      Restaurar ação bônus
+    </button>
+  </div>
+</div>
+
+  <p class="master-warning">
+    ⚠️ Os ajustes são aplicados imediatamente.
+    Confira os valores antes de confirmar.
+  </p>
+</section>
+  
+<section class="panel dice-panel">
+  <h3>🎲 Rolagem de Dados</h3>
+
+  <div class="dice-area">
+    <div id="d20" class="dice">
+      <span id="diceValue">20</span>
+    </div>
+
+    <div class="dice-info">
+      <p id="diceStatus">Aguardando uma rolagem...</p>
+      <p id="diceDetails">
+        Os resultados dos ataques aparecerão aqui.
+      </p>
+    </div>
+  </div>
+</section>
+
+    <section class="panel">
+      <h3>Registro de eventos</h3>
+      <pre id="log">Aguardando ações...</pre>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
