@@ -1028,3 +1028,25 @@ button:not(:disabled):hover {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.inventory-equip-button {
+  padding: 8px 14px;
+  border: 1px solid #b58a3c;
+  border-radius: 6px;
+  background: #65471e;
+  color: #f5dca5;
+  cursor: pointer;
+}
+
+.inventory-equip-button:hover {
+  background: #82602b;
+}
+
+.inventory-equip-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.inventory-remove-controls {
+  flex-wrap: wrap;
+}

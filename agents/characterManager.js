@@ -372,6 +372,121 @@ function adicionarItemInventario(personagem, item) {
   };
 }
 
+function equiparItemInventario(personagem, itemId) {
+  prepararInventario(personagem);
+
+  const item = personagem.inventario.find(
+    item => item.id === itemId
+  );
+
+  if (!item) {
+    return { erro: "Item não encontrado." };
+  }
+
+  const tiposPermitidos = [
+    "arma",
+    "armadura",
+    "escudo"
+  ];
+
+  if (!tiposPermitidos.includes(item.tipo)) {
+    return {
+      erro: "Este tipo de item não pode ser equipado."
+    };
+  }
+
+  if (item.equipado === true) {
+    return { erro: "Este item já está equipado." };
+  }
+
+  // Permitir apenas uma armadura equipada.
+  if (item.tipo === "armadura") {
+    for (const outro of personagem.inventario) {
+      if (outro.tipo === "armadura") {
+        outro.equipado = false;
+      }
+    }
+  }
+
+  // Permitir apenas um escudo equipado.
+  if (item.tipo === "escudo") {
+    for (const outro of personagem.inventario) {
+      if (outro.tipo === "escudo") {
+        outro.equipado = false;
+      }
+    }
+  }
+
+  item.equipado = true;
+
+  return {
+    mensagem: "Item equipado com sucesso.",
+    item,
+    inventario: personagem.inventario
+  };
+}
+
+function desequiparItemInventario(personagem, itemId) {
+  prepararInventario(personagem);
+
+  const item = personagem.inventario.find(
+    item => item.id === itemId
+  );
+
+  if (!item) {
+    return { erro: "Item não encontrado." };
+  }
+
+  if (item.equipado !== true) {
+    return { erro: "Este item não está equipado." };
+  }
+
+  item.equipado = false;
+
+  return {
+    mensagem: "Item desequipado com sucesso.",
+    item,
+    inventario: personagem.inventario
+  };
+}
+
+function alterarEquipamentoPersonagem(personagemId, itemId, equipar) {
+  if (typeof equipar !== "boolean") {
+    return { erro: "Operação de equipamento inválida." };
+  }
+
+  const personagem = buscarPersonagem(personagemId);
+
+  if (personagem.erro) {
+    return personagem;
+  }
+
+  const resultado = equipar
+    ? equiparItemInventario(personagem, itemId)
+    : desequiparItemInventario(personagem, itemId);
+
+  if (resultado.erro) {
+    return resultado;
+  }
+
+  const salvamento = salvarInventarioPersonagem(
+    personagemId,
+    personagem.inventario
+  );
+
+  if (salvamento.erro) {
+    return salvamento;
+  }
+
+  return {
+    mensagem: equipar
+      ? "Equipamento salvo como equipado."
+      : "Equipamento salvo como desequipado.",
+    item: resultado.item,
+    inventario: salvamento.inventario
+  };
+}
+
 function removerItemInventario(personagem, itemId, quantidade) {
   prepararInventario(personagem);
 
@@ -501,6 +616,375 @@ function removerItemPersonagem(personagemId, itemId, quantidade) {
   };
 }
 
+function calcularCAEquipamentos(personagem) {
+  prepararInventario(personagem);
+
+  const destreza = personagem.atributos?.destreza;
+
+  if (!Number.isInteger(destreza)) {
+    return { erro: "Destreza inválida na ficha." };
+  }
+
+  const modificadorDestreza = Math.floor(
+    (destreza - 10) / 2
+  );
+
+  
+const armaduras = {
+  // ARMADURAS LEVES
+  "armadura acolchoada": {
+    base: 11,
+    maxDestreza: null
+  },
+  "armadura de couro": {
+    base: 11,
+    maxDestreza: null
+  },
+  "couro batido": {
+    base: 12,
+    maxDestreza: null
+  },
+
+  // ARMADURAS MÉDIAS
+  "gibão de peles": {
+    base: 12,
+    maxDestreza: 2
+  },
+  "camisão de malha": {
+    base: 13,
+    maxDestreza: 2
+  },
+  "brunea": {
+    base: 14,
+    maxDestreza: 2
+  },
+  "peitoral": {
+    base: 14,
+    maxDestreza: 2
+  },
+  "meia-armadura": {
+    base: 15,
+    maxDestreza: 2
+  },
+
+  // ARMADURAS PESADAS
+  "cota de anéis": {
+    base: 14,
+    maxDestreza: 0
+  },
+  "cota de malha": {
+    base: 16,
+    maxDestreza: 0
+  },
+  "cota de talas": {
+    base: 17,
+    maxDestreza: 0
+  },
+  "armadura de placas": {
+    base: 18,
+    maxDestreza: 0
+  }
+};
+
+
+  const inventario = personagem.inventario;
+
+  const armadura = inventario.find(
+    item => item.tipo === "armadura" &&
+            item.equipado === true
+  );
+
+  const escudo = inventario.find(
+    item => item.tipo === "escudo" &&
+            item.equipado === true
+  );
+
+  let ca = 10 + modificadorDestreza;
+
+  if (armadura) {
+    const nome = armadura.nome.trim().toLowerCase();
+    const dados = armaduras[nome];
+
+    if (!dados) {
+      return {
+        erro: "Armadura ainda não cadastrada nas regras."
+      };
+    }
+
+    
+ca = dados.base;
+
+if (dados.maxDestreza === null) {
+  ca += modificadorDestreza;
+} else if (dados.maxDestreza === 2) {
+  ca += Math.min(modificadorDestreza, 2);
+}
+
+  }
+
+  if (escudo) {
+    ca += 2;
+  }
+
+  return {
+    caCalculada: ca,
+    modificadorDestreza,
+    armadura: armadura?.nome || "Nenhuma",
+    escudo: escudo?.nome || "Nenhum",
+    caOriginal: personagem.ca
+  };
+}
+
+function calcularDeslocamentoArmadura(personagem) {
+  if (!personagem || typeof personagem !== "object") {
+    return { erro: "Personagem inválido." };
+  }
+
+  const forca = personagem.atributos?.forca;
+  const deslocamento = personagem.deslocamento;
+
+  if (
+    !Number.isInteger(forca) ||
+    !Number.isFinite(deslocamento) ||
+    deslocamento < 0
+  ) {
+    return { erro: "Força ou deslocamento inválido." };
+  }
+
+  const requisitos = {
+    "cota de anéis": 0,
+    "cota de malha": 13,
+    "cota de talas": 15,
+    "armadura de placas": 15
+  };
+
+  const inventario = Array.isArray(personagem.inventario)
+    ? personagem.inventario
+    : [];
+
+  const armadura = inventario.find(
+    item => item.tipo === "armadura" &&
+            item.equipado === true
+  );
+
+  const nome = armadura?.nome?.trim().toLowerCase();
+
+  const forcaNecessaria =
+    Object.prototype.hasOwnProperty.call(requisitos, nome)
+      ? requisitos[nome]
+      : 0;
+
+  const ehAnao = personagem.raca
+    ?.trim()
+    .toLowerCase()
+    .includes("anão") ||
+    personagem.raca
+      ?.trim()
+      .toLowerCase()
+      .includes("anao");
+
+  const forcaInsuficiente = forca < forcaNecessaria;
+
+  const penalidade = forcaInsuficiente && !ehAnao
+    ? 3
+    : 0;
+
+  return {
+    armadura: armadura?.nome || "Nenhuma",
+    forcaAtual: forca,
+    forcaNecessaria,
+    forcaInsuficiente,
+    excecaoRacial: Boolean(ehAnao),
+    penalidade,
+    deslocamentoOriginal: deslocamento,
+    deslocamentoCalculado: Math.max(
+      0,
+      deslocamento - penalidade
+    )
+  };
+}
+
+function prepararProficienciasArmadura(personagem) {
+  if (
+    !personagem ||
+    typeof personagem !== "object" ||
+    Array.isArray(personagem)
+  ) {
+    return { erro: "Personagem inválido." };
+  }
+
+  const campos = [
+    "leves",
+    "medias",
+    "pesadas",
+    "escudos"
+  ];
+
+  const origem = personagem.proficienciasArmadura;
+
+  const proficiencias = {};
+
+  for (const campo of campos) {
+    const valor = origem?.[campo];
+
+    proficiencias[campo] =
+      typeof valor === "boolean" ? valor : false;
+  }
+
+  return {
+    proficienciasArmadura: proficiencias
+  };
+}
+
+function salvarProficienciasArmadura(personagemId, proficiencias) {
+  const campos = ["leves", "medias", "pesadas", "escudos"];
+
+  if (
+    !proficiencias ||
+    typeof proficiencias !== "object" ||
+    Array.isArray(proficiencias) ||
+    campos.some(campo =>
+      typeof proficiencias[campo] !== "boolean"
+    )
+  ) {
+    return { erro: "Proficiências inválidas." };
+  }
+
+  const personagens = carregarPersonagens();
+
+  const indice = personagens.findIndex(
+    personagem => personagem.id === personagemId
+  );
+
+  if (indice === -1) {
+    return { erro: "Personagem não encontrado." };
+  }
+
+  personagens[indice].proficienciasArmadura = {
+    leves: proficiencias.leves,
+    medias: proficiencias.medias,
+    pesadas: proficiencias.pesadas,
+    escudos: proficiencias.escudos
+  };
+
+  personagens[indice].atualizadoEm =
+    new Date().toISOString();
+
+  salvarPersonagens(personagens);
+
+  return {
+    mensagem: "Proficiências salvas com sucesso.",
+    personagemId,
+    proficienciasArmadura:
+      personagens[indice].proficienciasArmadura
+  };
+}
+
+function identificarCategoriaArmadura(nomeItem, tipoItem) {
+  if (
+    typeof nomeItem !== "string" ||
+    typeof tipoItem !== "string"
+  ) {
+    return null;
+  }
+
+  const nome = nomeItem.trim().toLowerCase();
+  const tipo = tipoItem.trim().toLowerCase();
+
+  if (tipo === "escudo" && nome === "escudo") {
+    return "escudos";
+  }
+
+  if (tipo !== "armadura") {
+    return null;
+  }
+
+  const categorias = {
+    leves: [
+      "armadura acolchoada",
+      "armadura de couro",
+      "couro batido"
+    ],
+
+    medias: [
+      "gibão de peles",
+      "camisão de malha",
+      "brunea",
+      "peitoral",
+      "meia-armadura"
+    ],
+
+    pesadas: [
+      "cota de anéis",
+      "cota de malha",
+      "cota de talas",
+      "armadura de placas"
+    ]
+  };
+
+  for (const [categoria, armaduras] of Object.entries(categorias)) {
+    if (armaduras.includes(nome)) {
+      return categoria;
+    }
+  }
+
+  return null;
+}
+
+function verificarProficienciasEquipamentos(personagem) {
+  if (!personagem || typeof personagem !== "object") {
+    return { erro: "Personagem inválido." };
+  }
+
+  const inventario = Array.isArray(personagem.inventario)
+    ? personagem.inventario
+    : [];
+
+  const proficiencias = personagem.proficienciasArmadura;
+
+  const equipamentos = [];
+
+  for (const item of inventario) {
+    if (!item.equipado) continue;
+
+    if (!["armadura", "escudo"].includes(item.tipo)) {
+      continue;
+    }
+
+    const categoria = identificarCategoriaArmadura(
+      item.nome,
+      item.tipo
+    );
+
+    let status = "nao_informado";
+
+    if (categoria && proficiencias) {
+      const valor = proficiencias[categoria];
+
+      if (valor === true) {
+        status = "proficiente";
+      } else if (valor === false) {
+        status = "sem_proficiencia";
+      }
+    }
+
+    equipamentos.push({
+      nome: item.nome,
+      categoria: categoria || "desconhecida",
+      status
+    });
+  }
+
+  return {
+    personagem: personagem.nome,
+    equipamentos,
+    possuiEquipamentoSemProficiencia:
+      equipamentos.some(
+        item => item.status === "sem_proficiencia"
+      )
+  };
+}
+
 module.exports = {
   criarPersonagem,
   listarPersonagens,
@@ -513,5 +997,14 @@ module.exports = {
   removerItemInventario,
   salvarInventarioPersonagem,
   adicionarItemPersonagem,
-  removerItemPersonagem
+  removerItemPersonagem,
+  equiparItemInventario,
+  desequiparItemInventario,
+  alterarEquipamentoPersonagem,
+  calcularCAEquipamentos,
+  calcularDeslocamentoArmadura,
+  prepararProficienciasArmadura,
+  salvarProficienciasArmadura,
+  identificarCategoriaArmadura,
+  verificarProficienciasEquipamentos
 };

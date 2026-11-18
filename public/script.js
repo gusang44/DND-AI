@@ -1059,6 +1059,52 @@ async function abrirFichaDetalhada(id) {
       `/personagens/${encodeURIComponent(id)}`
     );
 
+const proficienciasArmadura = {
+  leves: personagem.proficienciasArmadura?.leves ?? false,
+  medias: personagem.proficienciasArmadura?.medias ?? false,
+  pesadas: personagem.proficienciasArmadura?.pesadas ?? false,
+  escudos: personagem.proficienciasArmadura?.escudos ?? false
+};
+
+let caEquipamentos = null;
+
+try {
+  caEquipamentos = await requisicao(
+    `/personagens/${encodeURIComponent(id)}/ca-equipamentos`
+  );
+} catch (erroCA) {
+  console.warn(
+    "Não foi possível calcular a CA dos equipamentos:",
+    erroCA.message
+  );
+}
+
+let deslocamentoEquipamentos = null;
+
+try {
+  deslocamentoEquipamentos = await requisicao(
+    `/personagens/${encodeURIComponent(id)}/deslocamento-equipamentos`
+  );
+} catch (erroDeslocamento) {
+  console.warn(
+    "Não foi possível calcular o deslocamento:",
+    erroDeslocamento.message
+  );
+}
+
+let verificacaoProficiencias = null;
+
+try {
+  verificacaoProficiencias = await requisicao(
+    `/personagens/${encodeURIComponent(id)}/verificar-proficiencias`
+  );
+} catch (erro) {
+  console.warn(
+    "Não foi possível verificar as proficiências:",
+    erro.message
+  );
+}
+
     const painel = $("painelFichaDetalhada");
     const conteudo = $("conteudoFichaDetalhada");
 
@@ -1091,6 +1137,12 @@ async function abrirFichaDetalhada(id) {
         `${personagem.pvMaximo ?? "—"}`
       ],
       ["Classe de Armadura", personagem.ca ?? "—"],
+
+[
+  "CA dos Equipamentos",
+  caEquipamentos?.caCalculada ?? "Não calculada"
+],
+
       [
         "Proficiência",
         personagem.bonusProficiencia == null
@@ -1105,6 +1157,14 @@ async function abrirFichaDetalhada(id) {
           ? "—"
           : `${personagem.deslocamento} m`
       ],
+
+[
+  "Deslocamento com Equipamentos",
+  deslocamentoEquipamentos?.deslocamentoCalculado == null
+    ? "Não calculado"
+    : `${deslocamentoEquipamentos.deslocamentoCalculado} m`
+],
+
       [
         "Regras",
         personagem.versaoRegras ?? "Não informado"
@@ -1121,6 +1181,19 @@ async function abrirFichaDetalhada(id) {
 
       informacoes.appendChild(bloco);
     }
+
+const editorProficiencias =
+  criarEditorProficienciasArmadura(
+    proficienciasArmadura,
+    personagem.id
+  );
+
+informacoes.appendChild(editorProficiencias);
+
+const avisosProficiencias =
+  criarAvisosProficiencias(verificacaoProficiencias);
+
+informacoes.appendChild(avisosProficiencias);
 
     const tituloAtributos = criarElemento(
       "h5",
@@ -1192,13 +1265,16 @@ campoNome.required = true;
 
 const campoTipo = document.createElement("select");
 
+
 for (const tipo of [
   "arma",
   "armadura",
+  "escudo",
   "consumivel",
   "equipamento",
   "outros"
 ]) {
+
   const opcao = document.createElement("option");
   opcao.value = tipo;
   opcao.textContent = tipo;
@@ -1351,6 +1427,49 @@ for (const item of inventario) {
     }
   });
 
+const tiposEquipaveis = ["arma", "armadura", "escudo"];
+
+if (tiposEquipaveis.includes(item.tipo)) {
+  const botaoEquipamento = document.createElement("button");
+
+  botaoEquipamento.type = "button";
+  botaoEquipamento.className = "inventory-equip-button";
+
+  botaoEquipamento.textContent = item.equipado
+    ? "Desequipar"
+    : "Equipar";
+
+  const mensagemEquipamento = criarElemento("p", "", "");
+
+  botaoEquipamento.addEventListener("click", async () => {
+    const equipar = item.equipado !== true;
+
+    botaoEquipamento.disabled = true;
+    mensagemEquipamento.textContent = equipar
+      ? "Equipando..."
+      : "Desequipando...";
+
+    try {
+      await requisicao(
+        `/personagens/${encodeURIComponent(id)}/inventario/${encodeURIComponent(item.id)}/equipar`,
+        "PATCH",
+        { equipar }
+      );
+
+      await abrirFichaDetalhada(id);
+
+    } catch (erro) {
+      mensagemEquipamento.textContent =
+        `Erro: ${erro.message}`;
+
+      botaoEquipamento.disabled = false;
+    }
+  });
+
+  controles.appendChild(botaoEquipamento);
+  linha.appendChild(mensagemEquipamento);
+}
+
   controles.append(campoRemover, botaoRemover);
 
   linha.append(
@@ -1362,6 +1481,8 @@ for (const item of inventario) {
 
   secaoInventario.appendChild(linha);
 }
+
+
 
 }
 
@@ -1742,3 +1863,134 @@ $("criarBatalhaComFichas").addEventListener(
 
 // Carregar as opções ao abrir o aplicativo.
 carregarSelecaoPersonagensBatalha();
+function criarEditorProficienciasArmadura(proficiencias, personagemId) {
+  const editor = document.createElement("div");
+  editor.className = "editor-proficiencias-armadura";
+
+  const titulo = document.createElement("h3");
+  titulo.textContent = "Proficiências com Armaduras";
+  editor.appendChild(titulo);
+
+  const opcoes = [
+    ["leves", "Armaduras leves"],
+    ["medias", "Armaduras médias"],
+    ["pesadas", "Armaduras pesadas"],
+    ["escudos", "Escudos"]
+  ];
+
+  for (const [chave, descricao] of opcoes) {
+    const label = document.createElement("label");
+    label.style.display = "block";
+    label.style.marginBottom = "8px";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.name = chave;
+    checkbox.checked = proficiencias[chave] === true;
+
+    label.appendChild(checkbox);
+    label.appendChild(
+      document.createTextNode(` ${descricao}`)
+    );
+
+    editor.appendChild(label);
+  }
+
+const botaoSalvar = document.createElement("button");
+botaoSalvar.type = "button";
+botaoSalvar.textContent = "Salvar Proficiências";
+
+const mensagem = document.createElement("p");
+
+botaoSalvar.addEventListener("click", async () => {
+  const proficienciasAtualizadas = {};
+
+  for (const chave of ["leves", "medias", "pesadas", "escudos"]) {
+    const checkbox = editor.querySelector(
+      `input[name="${chave}"]`
+    );
+
+    proficienciasAtualizadas[chave] = checkbox.checked;
+  }
+
+  botaoSalvar.disabled = true;
+  mensagem.textContent = "Salvando proficiências...";
+
+  try {
+    const resposta = await fetch(
+      `/personagens/${encodeURIComponent(personagemId)}/proficiencias-armadura`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(proficienciasAtualizadas)
+      }
+    );
+
+    const resultado = await resposta.json();
+
+    if (!resposta.ok) {
+      throw new Error(
+        resultado.erro || "Não foi possível salvar."
+      );
+    }
+
+    mensagem.textContent = "Proficiências salvas com sucesso!";
+  } catch (erro) {
+    mensagem.textContent = `Erro: ${erro.message}`;
+  } finally {
+    botaoSalvar.disabled = false;
+  }
+});
+
+editor.append(botaoSalvar, mensagem);
+
+  return editor;
+}
+
+
+function criarAvisosProficiencias(verificacao) {
+  const secao = document.createElement("div");
+  secao.className = "avisos-proficiencias";
+
+  const titulo = document.createElement("h3");
+  titulo.textContent = "Proficiência dos Equipamentos";
+  secao.appendChild(titulo);
+
+  if (!verificacao) {
+    const aviso = document.createElement("p");
+    aviso.textContent = "Verificação indisponível.";
+    secao.appendChild(aviso);
+    return secao;
+  }
+
+  const equipamentos = verificacao.equipamentos || [];
+
+  if (equipamentos.length === 0) {
+    const aviso = document.createElement("p");
+    aviso.textContent = "Nenhuma armadura ou escudo equipado.";
+    secao.appendChild(aviso);
+    return secao;
+  }
+
+  const rotulos = {
+    proficiente: "Proficiente",
+    sem_proficiencia: "Sem proficiência",
+    nao_informado: "Não informado"
+  };
+
+  for (const item of equipamentos) {
+    const linha = document.createElement("p");
+
+    const status = rotulos[item.status] || "Não informado";
+
+    linha.textContent = `${item.nome}: ${status}`;
+
+    linha.className = `proficiencia-${item.status}`;
+
+    secao.appendChild(linha);
+  }
+
+  return secao;
+}

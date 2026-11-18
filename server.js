@@ -1,6 +1,6 @@
 
 const express = require("express");
-
+console.log("SERVIDOR CARREGADO DE:", __filename);
 const coordenar = require("./agents/coordinator");
 const narrar = require("./agents/narrator");
 const interpretarNPC = require("./agents/npcs");
@@ -35,7 +35,12 @@ const {
   buscarPersonagem,
   editarPersonagem,
   adicionarItemPersonagem,
-  removerItemPersonagem
+  removerItemPersonagem,
+  alterarEquipamentoPersonagem,
+  calcularCAEquipamentos,
+  calcularDeslocamentoArmadura,
+  salvarProficienciasArmadura,
+  verificarProficienciasEquipamentos,
 } = require("./agents/characterManager");
 
 const app = express();
@@ -625,6 +630,7 @@ app.post("/personagens/:id/inventario", (req, res) => {
   }
 });
 
+
  // ======================================
  // D&D AI v0.7 - REMOVER ITEM
  // ======================================
@@ -647,10 +653,10 @@ app.delete("/personagens/:id/inventario/:itemId", (req, res) => {
     );
 
     if (resultado.erro) {
-      const status = resultado.erro ===
-        "Personagem não encontrado."
-        ? 404
-        : 400;
+      const status =
+        resultado.erro === "Personagem não encontrado."
+          ? 404
+          : 400;
 
       return res.status(status).json(resultado);
     }
@@ -662,6 +668,49 @@ app.delete("/personagens/:id/inventario/:itemId", (req, res) => {
 
     return res.status(500).json({
       erro: "Erro interno ao remover item."
+    });
+  }
+});
+
+// ======================================
+// D&D AI v0.7 - EQUIPAR/DESEQUIPAR
+// ======================================
+
+console.log("D&D AI v0.7: registrando rota de equipamentos");
+
+app.patch("/personagens/:id/inventario/:itemId/equipar", (req, res) => {
+  try {
+    const { id, itemId } = req.params;
+    const { equipar } = req.body || {};
+
+    if (typeof equipar !== "boolean") {
+      return res.status(400).json({
+        erro: "O campo equipar deve ser verdadeiro ou falso."
+      });
+    }
+
+    const resultado = alterarEquipamentoPersonagem(
+      id,
+      itemId,
+      equipar
+    );
+
+    if (resultado.erro) {
+      const status =
+        resultado.erro === "Personagem não encontrado."
+          ? 404
+          : 400;
+
+      return res.status(status).json(resultado);
+    }
+
+    return res.json(resultado);
+
+  } catch (erro) {
+    console.error("Erro ao alterar equipamento:", erro);
+
+    return res.status(500).json({
+      erro: "Erro interno ao alterar equipamento."
     });
   }
 });
@@ -785,8 +834,123 @@ app.post("/batalha/criar-com-personagens", (req, res) => {
   }
 });
 
+ // ==========================================
+ // D&D AI v0.7 — DESLOCAMENTO COM ARMADURA
+ // ==========================================
+
+app.get("/personagens/:id/deslocamento-equipamentos", (req, res) => {
+  try {
+    const personagem = buscarPersonagem(req.params.id);
+
+    if (personagem.erro) {
+      return res.status(404).json(personagem);
+    }
+
+    const resultado = calcularDeslocamentoArmadura(personagem);
+
+    if (resultado.erro) {
+      return res.status(400).json(resultado);
+    }
+
+    return res.json(resultado);
+
+  } catch (erro) {
+    console.error("Erro ao calcular deslocamento:", erro);
+
+    return res.status(500).json({
+      erro: "Erro interno ao calcular deslocamento."
+    });
+  }
+});
+
+ // ==========================================
+ // D&D AI v0.7 — PROFICIÊNCIAS DE ARMADURAS
+ // ==========================================
+
+app.patch("/personagens/:id/proficiencias-armadura", (req, res) => {
+  try {
+    const resultado = salvarProficienciasArmadura(
+      req.params.id,
+      req.body
+    );
+
+    if (resultado.erro) {
+      const status = resultado.erro ===
+        "Personagem não encontrado." ? 404 : 400;
+
+      return res.status(status).json(resultado);
+    }
+
+    return res.json(resultado);
+
+  } catch (erro) {
+    console.error("Erro ao salvar proficiências:", erro);
+
+    return res.status(500).json({
+      erro: "Erro interno ao salvar proficiências."
+    });
+  }
+});
+
+ // ==========================================
+ // D&D AI v0.7 — VERIFICAR PROFICIÊNCIAS
+ // ==========================================
+
+app.get("/personagens/:id/verificar-proficiencias", (req, res) => {
+  try {
+    const personagem = buscarPersonagem(req.params.id);
+
+    if (!personagem || personagem.erro) {
+      return res.status(404).json({
+        erro: "Personagem não encontrado."
+      });
+    }
+
+    const resultado = verificarProficienciasEquipamentos(
+      personagem
+    );
+
+    if (resultado.erro) {
+      return res.status(400).json(resultado);
+    }
+
+    return res.json(resultado);
+
+  } catch (erro) {
+    console.error("Erro ao verificar proficiências:", erro);
+
+    return res.status(500).json({
+      erro: "Erro interno ao verificar proficiências."
+    });
+  }
+});
+
 app.listen(PORT, "127.0.0.1", () => {
   console.log(
     `D&D AI iniciado em http://localhost:${PORT}`
   );
+});
+
+app.get("/personagens/:id/ca-equipamentos", (req, res) => {
+  try {
+    const personagem = buscarPersonagem(req.params.id);
+
+    if (personagem.erro) {
+      return res.status(404).json(personagem);
+    }
+
+    const resultado = calcularCAEquipamentos(personagem);
+
+    if (resultado.erro) {
+      return res.status(400).json(resultado);
+    }
+
+    return res.json(resultado);
+  } catch (erro) {
+    console.error("Erro ao calcular CA:", erro);
+
+    return res.status(500).json({
+      erro: "Erro interno ao calcular CA."
+    });
+  }
 });
