@@ -985,6 +985,50 @@ function verificarProficienciasEquipamentos(personagem) {
   };
 }
 
+function calcularRestricoesArmadura(personagem) {
+  const verificacao =
+    verificarProficienciasEquipamentos(personagem);
+
+  if (verificacao.erro) {
+    return verificacao;
+  }
+
+  const equipamentos =
+    verificacao.equipamentos || [];
+
+  const semProficiencia = equipamentos.filter(
+    item => item.status === "sem_proficiencia"
+  );
+
+  const naoInformados = equipamentos.filter(
+    item => item.status === "nao_informado"
+  );
+
+  const possuiRestricoes = semProficiencia.length > 0;
+
+  return {
+    personagem: personagem.nome,
+
+    equipamentosSemProficiencia:
+      semProficiencia.map(item => item.nome),
+
+    verificacaoPendente:
+      naoInformados.length > 0,
+
+    possuiRestricoes,
+
+    desvantagemForcaDestreza: possuiRestricoes,
+
+    conjuracaoBloqueada: possuiRestricoes,
+
+    descricao: possuiRestricoes
+      ? "Desvantagem em testes de habilidade, testes de resistência e jogadas de ataque que utilizem Força ou Destreza. Não pode conjurar magias."
+      : naoInformados.length > 0
+        ? "Existem equipamentos cuja proficiência não foi informada ou reconhecida."
+        : "Nenhuma restrição por falta de proficiência identificada."
+  };
+}
+
 module.exports = {
   criarPersonagem,
   listarPersonagens,
@@ -1006,5 +1050,6 @@ module.exports = {
   prepararProficienciasArmadura,
   salvarProficienciasArmadura,
   identificarCategoriaArmadura,
-  verificarProficienciasEquipamentos
+  verificarProficienciasEquipamentos,
+  calcularRestricoesArmadura
 };

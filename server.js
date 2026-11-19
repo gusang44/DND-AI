@@ -41,6 +41,7 @@ const {
   calcularDeslocamentoArmadura,
   salvarProficienciasArmadura,
   verificarProficienciasEquipamentos,
+  calcularRestricoesArmadura
 } = require("./agents/characterManager");
 
 const app = express();
@@ -921,6 +922,37 @@ app.get("/personagens/:id/verificar-proficiencias", (req, res) => {
 
     return res.status(500).json({
       erro: "Erro interno ao verificar proficiências."
+    });
+  }
+});
+
+ // ==========================================
+ // D&D AI v0.7 — RESTRIÇÕES DE ARMADURAS
+ // ==========================================
+
+app.get("/personagens/:id/restricoes-armadura", (req, res) => {
+  try {
+    const personagem = buscarPersonagem(req.params.id);
+
+    if (!personagem || personagem.erro) {
+      return res.status(404).json({
+        erro: "Personagem não encontrado."
+      });
+    }
+
+    const resultado = calcularRestricoesArmadura(personagem);
+
+    if (resultado.erro) {
+      return res.status(400).json(resultado);
+    }
+
+    return res.json(resultado);
+
+  } catch (erro) {
+    console.error("Erro ao calcular restrições:", erro);
+
+    return res.status(500).json({
+      erro: "Erro interno ao calcular restrições."
     });
   }
 });

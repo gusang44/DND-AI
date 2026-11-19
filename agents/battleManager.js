@@ -14,6 +14,62 @@ const {
   carregarDados
 } = require("./storage");
 
+const {
+  buscarPersonagem: buscarFichaPersonagem,
+  calcularRestricoesArmadura
+} = require("./characterManager");
+
+function consultarRestricoesParticipante(participante) {
+  if (!participante || typeof participante !== "object") {
+    return {
+      status: "indisponivel",
+      motivo: "Participante inválido."
+    };
+  }
+
+  const fichaId = participante.fichaPersonagemId;
+
+  if (typeof fichaId !== "string" || !fichaId.trim()) {
+    return {
+      status: "sem_ficha",
+      motivo: "Participante sem ficha vinculada."
+    };
+  }
+
+  const ficha = buscarFichaPersonagem(fichaId);
+
+  if (!ficha || ficha.erro) {
+    return {
+      status: "ficha_nao_encontrada",
+      motivo: "Ficha vinculada não encontrada."
+    };
+  }
+
+  const restricoes = calcularRestricoesArmadura(ficha);
+
+  if (restricoes.erro) {
+    return {
+      status: "indisponivel",
+      motivo: restricoes.erro
+    };
+  }
+
+  return {
+    status: restricoes.verificacaoPendente
+      ? "verificacao_pendente"
+      : "verificado",
+
+    fichaPersonagemId: fichaId,
+    possuiRestricoes: restricoes.possuiRestricoes,
+    desvantagemForcaDestreza:
+      restricoes.desvantagemForcaDestreza,
+    conjuracaoBloqueada:
+      restricoes.conjuracaoBloqueada,
+    equipamentosSemProficiencia:
+      restricoes.equipamentosSemProficiencia
+  };
+}
+
 // ==========================================
 // ARMAZENAMENTO DAS BATALHAS
 // ==========================================
@@ -131,6 +187,7 @@ function criarBatalha(id, participantes) {
 
     return {
       nome: p.nome,
+      fichaPersonagemId: p.fichaPersonagemId ?? null,
       pv: p.pv,
       pvMaximo: p.pv,
       ca: p.ca,
@@ -376,6 +433,18 @@ function atacarNaBatalha(id, atacante, alvo, ataque) {
 
   if (
     !ataque ||
+
+    (
+      ataque.atributo !== undefined &&
+      ![
+        "forca",
+        "destreza",
+        "constituicao",
+        "inteligencia",
+        "sabedoria",
+        "carisma"
+      ].includes(ataque.atributo)
+    ) ||
     !Number.isFinite(ataque.bonusAtaque) ||
     !Number.isInteger(ataque.quantidadeDados) ||
     ataque.quantidadeDados <= 0 ||
@@ -386,11 +455,20 @@ function atacarNaBatalha(id, atacante, alvo, ataque) {
     return { erro: "Dados do ataque inválidos." };
   }
 
-  const resultado = realizarAtaque(
-    personagem,
-    inimigo,
-    ataque
-  );
+  
+const decisaoRolagem = determinarTipoRolagemAtaque(
+  personagem,
+  ataque,
+  ataque.possuiVantagem === true,
+  ataque.possuiDesvantagem === true
+);
+
+const resultado = realizarAtaque(
+  personagem,
+  inimigo,
+  ataque,
+  decisaoRolagem.tipoRolagem
+);
 
   // combat.js calcula o dano e os PV resultantes.
   // Garantimos que os PV permaneçam dentro dos limites.
@@ -873,6 +951,44 @@ function excluirBatalha(id) {
   };
 }
 
+function determinarTipoRolagemAtaque(
+  participante,
+  ataque,
+  possuiVantagem = false,
+  possuiDesvantagem = false
+) {
+  const restricoes =
+    consultarRestricoesParticipante(participante);
+
+  const atributoAfetado =
+    ataque?.atributo === "forca" ||
+    ataque?.atributo === "destreza";
+
+  const desvantagemArmadura =
+    restricoes.desvantagemForcaDestreza === true &&
+    atributoAfetado;
+
+  const vantagem = possuiVantagem === true;
+
+  const desvantagem =
+    possuiDesvantagem === true ||
+    desvantagemArmadura;
+
+  let tipo = "normal";
+
+  if (vantagem && !desvantagem) {
+    tipo = "vantagem";
+  } else if (desvantagem && !vantagem) {
+    tipo = "desvantagem";
+  }
+
+  return {
+    tipoRolagem: tipo,
+    desvantagemArmadura,
+    restricoesStatus: restricoes.status
+  };
+}
+
 module.exports = {
   criarBatalha: executarESalvar(criarBatalha),
   obterBatalha,
@@ -888,5 +1004,7 @@ module.exports = {
   curarPersonagem: executarESalvar(curarPersonagem),
   restaurarAcaoMestre: executarESalvar(restaurarAcaoMestre),
   renomearBatalha: executarESalvar(renomearBatalha),
-excluirBatalha: executarESalvar(excluirBatalha)
+excluirBatalha: executarESalvar(excluirBatalha),
+consultarRestricoesParticipante,
+determinarTipoRolagemAtaque
 };

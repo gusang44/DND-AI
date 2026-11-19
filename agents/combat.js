@@ -3,6 +3,38 @@ function rolarDado(lados = 20) {
   return Math.floor(Math.random() * lados) + 1;
 }
 
+function rolarD20ComVantagem(tipo = "normal") {
+  const primeiroDado = rolarDado(20);
+
+  if (tipo === "normal") {
+    return {
+      tipo: "normal",
+      dados: [primeiroDado],
+      resultado: primeiroDado
+    };
+  }
+
+  const segundoDado = rolarDado(20);
+
+  if (tipo === "vantagem") {
+    return {
+      tipo: "vantagem",
+      dados: [primeiroDado, segundoDado],
+      resultado: Math.max(primeiroDado, segundoDado)
+    };
+  }
+
+  if (tipo === "desvantagem") {
+    return {
+      tipo: "desvantagem",
+      dados: [primeiroDado, segundoDado],
+      resultado: Math.min(primeiroDado, segundoDado)
+    };
+  }
+
+  throw new Error("Tipo de rolagem inválido.");
+}
+
 function calcularIniciativa(nome, modificador = 0) {
   const dado = rolarDado(20);
 
@@ -32,8 +64,11 @@ function iniciarCombate(participantes) {
   };
 }
 
-function realizarAtaque(atacante, alvo, ataque) {
-  const dado = rolarDado(20);
+
+function realizarAtaque(atacante, alvo, ataque, tipoRolagem = "normal") {
+const rolagem = rolarD20ComVantagem(tipoRolagem);
+const dado = rolagem.resultado;
+
   const bonus = ataque.bonusAtaque;
   const total = dado + bonus;
 
@@ -63,6 +98,8 @@ function realizarAtaque(atacante, alvo, ataque) {
     atacante: atacante.nome,
     alvo: alvo.nome,
     dado,
+    tipoRolagem: rolagem.tipo,
+    dadosRolados: rolagem.dados,
     bonusAtaque: bonus,
     totalAtaque: total,
     classeArmadura: alvo.ca,
@@ -76,7 +113,8 @@ function realizarAtaque(atacante, alvo, ataque) {
 
 module.exports = {
   rolarDado,
+  rolarD20ComVantagem,
   calcularIniciativa,
   iniciarCombate,
-  realizarAtaque
+  realizarAtaque,
 };

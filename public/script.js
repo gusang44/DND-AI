@@ -1105,6 +1105,19 @@ try {
   );
 }
 
+let restricoesArmadura = null;
+
+try {
+  restricoesArmadura = await requisicao(
+    `/personagens/${encodeURIComponent(id)}/restricoes-armadura`
+  );
+} catch (erro) {
+  console.warn(
+    "Não foi possível consultar as restrições de armadura:",
+    erro.message
+  );
+}
+
     const painel = $("painelFichaDetalhada");
     const conteudo = $("conteudoFichaDetalhada");
 
@@ -1182,18 +1195,36 @@ try {
       informacoes.appendChild(bloco);
     }
 
+
+let avisosProficiencias =
+  criarAvisosProficiencias(verificacaoProficiencias);
+
 const editorProficiencias =
   criarEditorProficienciasArmadura(
     proficienciasArmadura,
-    personagem.id
+    personagem.id,
+    async () => {
+      avisosProficiencias =
+        await atualizarAvisosProficiencias(
+          personagem.id,
+          avisosProficiencias
+        );
+
+      painelRestricoes =
+        await atualizarAvisosRestricoesArmadura(
+          personagem.id,
+          painelRestricoes
+  );
+
+    }
   );
 
 informacoes.appendChild(editorProficiencias);
-
-const avisosProficiencias =
-  criarAvisosProficiencias(verificacaoProficiencias);
-
 informacoes.appendChild(avisosProficiencias);
+informacoes.appendChild(avisosProficiencias);
+
+let painelRestricoes =
+  criarAvisosRestricoesArmadura(restricoesArmadura);
 
     const tituloAtributos = criarElemento(
       "h5",
@@ -1486,13 +1517,14 @@ if (tiposEquipaveis.includes(item.tipo)) {
 
 }
 
-    conteudo.append(
-      cabecalho,
-      informacoes,
-      tituloAtributos,
-      atributos,
-      secaoInventario
-    );
+conteudo.append(
+  cabecalho,
+  informacoes,
+  painelRestricoes,
+  tituloAtributos,
+  atributos,
+  secaoInventario
+);
 
     painel.hidden = false;
 
@@ -1863,7 +1895,12 @@ $("criarBatalhaComFichas").addEventListener(
 
 // Carregar as opções ao abrir o aplicativo.
 carregarSelecaoPersonagensBatalha();
-function criarEditorProficienciasArmadura(proficiencias, personagemId) {
+
+function criarEditorProficienciasArmadura(
+  proficiencias,
+  personagemId,
+  aoSalvar = null
+) {
   const editor = document.createElement("div");
   editor.className = "editor-proficiencias-armadura";
 
@@ -1937,6 +1974,16 @@ botaoSalvar.addEventListener("click", async () => {
     }
 
     mensagem.textContent = "Proficiências salvas com sucesso!";
+if (typeof aoSalvar === "function") {
+  try {
+    await aoSalvar();
+  } catch (erroAtualizacao) {
+    console.warn(
+      "Proficiências salvas, mas os avisos não foram atualizados:",
+      erroAtualizacao
+    );
+  }
+}
   } catch (erro) {
     mensagem.textContent = `Erro: ${erro.message}`;
   } finally {
@@ -1993,4 +2040,80 @@ function criarAvisosProficiencias(verificacao) {
   }
 
   return secao;
+}
+
+async function atualizarAvisosProficiencias(personagemId, secaoAtual) {
+  try {
+    const verificacao = await requisicao(
+      `/personagens/${encodeURIComponent(personagemId)}/verificar-proficiencias`
+    );
+
+    const novaSecao = criarAvisosProficiencias(verificacao);
+
+    secaoAtual.replaceWith(novaSecao);
+
+    return novaSecao;
+
+  } catch (erro) {
+    console.error(
+      "Erro ao atualizar avisos de proficiência:",
+      erro
+    );
+
+    return secaoAtual;
+  }
+}
+
+function criarAvisosRestricoesArmadura(restricoes) {
+  const secao = document.createElement("div");
+  secao.className = "avisos-restricoes-armadura";
+
+  const titulo = document.createElement("h3");
+  titulo.textContent = "Restrições de Armadura";
+  secao.appendChild(titulo);
+
+  const mensagem = document.createElement("p");
+
+  if (!restricoes) {
+    mensagem.textContent = "Verificação indisponível.";
+  } else if (restricoes.possuiRestricoes) {
+    mensagem.textContent = restricoes.descricao;
+    mensagem.className = "restricao-ativa";
+  } else if (restricoes.verificacaoPendente) {
+    mensagem.textContent = restricoes.descricao;
+    mensagem.className = "restricao-pendente";
+  } else {
+    mensagem.textContent =
+      "Nenhuma restrição por falta de proficiência.";
+    mensagem.className = "restricao-inativa";
+  }
+
+  secao.appendChild(mensagem);
+  return secao;
+}
+
+async function atualizarAvisosRestricoesArmadura(
+  personagemId,
+  secaoAtual
+) {
+  try {
+    const restricoes = await requisicao(
+      `/personagens/${encodeURIComponent(personagemId)}/restricoes-armadura`
+    );
+
+    const novaSecao =
+      criarAvisosRestricoesArmadura(restricoes);
+
+    secaoAtual.replaceWith(novaSecao);
+
+    return novaSecao;
+
+  } catch (erro) {
+    console.error(
+      "Erro ao atualizar restrições de armadura:",
+      erro
+    );
+
+    return secaoAtual;
+  }
 }
