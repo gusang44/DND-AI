@@ -1049,6 +1049,229 @@ $("atualizarBiblioteca").addEventListener(
 
 carregarBibliotecaPersonagens();
 
+async function carregarProficienciasTestes(id) {
+  try {
+    const resposta = await fetch(
+      `/personagens/${encodeURIComponent(id)}`
+    );
+
+    if (!resposta.ok) {
+      throw new Error("Erro ao consultar personagem.");
+    }
+    
+    const dados = await resposta.json();
+    const personagem = dados.personagem || dados;
+
+    const pericias = [
+      "acrobacia",
+      "arcanismo",
+      "atletismo",
+      "atuacao",
+      "enganacao",
+      "furtividade",
+      "historia",
+      "intimidacao",
+      "intuicao",
+      "investigacao",
+      "lidarAnimais",
+      "medicina",
+      "natureza",
+      "percepcao",
+      "persuasao",
+      "prestidigitacao",
+      "religiao",
+      "sobrevivencia"
+    ];
+
+    const resistencias = [
+      "forca",
+      "destreza",
+      "constituicao",
+      "inteligencia",
+      "sabedoria",
+      "carisma"
+    ];
+
+    const proficiencias = personagem.proficienciasTestes || {};
+
+    const preparar = (lista, origem) =>
+      Object.fromEntries(
+        lista.map(chave => [
+          chave,
+          typeof origem?.[chave] === "boolean"
+            ? origem[chave]
+            : null
+        ])
+      );
+
+    return {
+      pericias: preparar(
+        pericias,
+        proficiencias.pericias
+      ),
+      resistencias: preparar(
+        resistencias,
+        proficiencias.resistencias
+      )
+    };
+
+  } catch (erro) {
+    console.error(
+      "Erro ao carregar proficiências:",
+      erro
+    );
+
+    return { erro: erro.message };
+  }
+}
+
+function criarEditorProficienciasTestes(proficiencias) {
+  const nomesPericias = {
+    acrobacia: "Acrobacia",
+    arcanismo: "Arcanismo",
+    atletismo: "Atletismo",
+    atuacao: "Atuação",
+    enganacao: "Enganação",
+    furtividade: "Furtividade",
+    historia: "História",
+    intimidacao: "Intimidação",
+    intuicao: "Intuição",
+    investigacao: "Investigação",
+    lidarAnimais: "Lidar com Animais",
+    medicina: "Medicina",
+    natureza: "Natureza",
+    percepcao: "Percepção",
+    persuasao: "Persuasão",
+    prestidigitacao: "Prestidigitação",
+    religiao: "Religião",
+    sobrevivencia: "Sobrevivência"
+  };
+
+  const nomesResistencias = {
+    forca: "Força",
+    destreza: "Destreza",
+    constituicao: "Constituição",
+    inteligencia: "Inteligência",
+    sabedoria: "Sabedoria",
+    carisma: "Carisma"
+  };
+
+  function criarGrupo(titulo, grupo, nomes) {
+    const linhas = Object.entries(nomes).map(([chave, nome]) => {
+      const valor = grupo?.[chave];
+
+      const selecionado =
+        valor === true ? "true" :
+        valor === false ? "false" : "null";
+
+      return `
+        <div class="linha-proficiencia">
+          <label for="prof-${chave}">${nome}</label>
+
+          <select
+            id="prof-${chave}"
+            data-proficiencia="${chave}"
+          >
+            <option value="null" ${selecionado === "null" ? "selected" : ""}>
+              Não informado
+            </option>
+            <option value="true" ${selecionado === "true" ? "selected" : ""}>
+              Proficiente
+            </option>
+            <option value="false" ${selecionado === "false" ? "selected" : ""}>
+              Não proficiente
+            </option>
+          </select>
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <section class="grupo-proficiencias" data-grupo="${titulo}">
+        <h4>${titulo}</h4>
+        ${linhas}
+      </section>
+    `;
+  }
+
+  return `
+    <div class="editor-proficiencias-testes">
+      ${criarGrupo(
+        "Perícias",
+        proficiencias.pericias,
+        nomesPericias
+      )}
+
+      ${criarGrupo(
+        "Resistências",
+        proficiencias.resistencias,
+        nomesResistencias
+      )}
+    </div>
+  `;
+}
+
+async function salvarEditorProficienciasTestes(id, secao) {
+  const dados = {
+    pericias: {},
+    resistencias: {}
+  };
+
+  const grupos = [
+    ["Perícias", "pericias"],
+    ["Resistências", "resistencias"]
+  ];
+
+  for (const [titulo, chaveGrupo] of grupos) {
+    const grupo = [...secao.querySelectorAll(
+      ".grupo-proficiencias"
+    )].find(
+      elemento => elemento.dataset.grupo === titulo
+    );
+
+    if (!grupo) {
+      throw new Error(
+        `Grupo de proficiências não encontrado: ${titulo}`
+      );
+    }
+
+    const seletores = grupo.querySelectorAll(
+      "select[data-proficiencia]"
+    );
+
+    for (const seletor of seletores) {
+      const chave = seletor.dataset.proficiencia;
+
+      dados[chaveGrupo][chave] =
+        seletor.value === "true" ? true :
+        seletor.value === "false" ? false :
+        null;
+    }
+  }
+
+  const resposta = await fetch(
+    `/personagens/${encodeURIComponent(id)}/proficiencias-testes`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(dados)
+    }
+  );
+
+  const resultado = await resposta.json();
+
+  if (!resposta.ok || resultado.erro) {
+    throw new Error(
+      resultado.erro ||
+      "Não foi possível salvar as proficiências."
+    );
+  }
+
+  return resultado;
+}
+
 // ==========================================
 // D&D AI v0.6 — FICHA DETALHADA
 // ==========================================
@@ -1058,6 +1281,9 @@ async function abrirFichaDetalhada(id) {
     const personagem = await requisicao(
       `/personagens/${encodeURIComponent(id)}`
     );
+
+const proficienciasTestes =
+  await carregarProficienciasTestes(id);
 
 const proficienciasArmadura = {
   leves: personagem.proficienciasArmadura?.leves ?? false,
@@ -1122,6 +1348,83 @@ try {
     const conteudo = $("conteudoFichaDetalhada");
 
     conteudo.replaceChildren();
+
+const secaoProficienciasTestes = criarElemento(
+  "section",
+  "secao-proficiencias-testes"
+);
+
+if (proficienciasTestes.erro) {
+  secaoProficienciasTestes.append(
+    criarElemento(
+      "p",
+      "",
+      "Não foi possível carregar as proficiências."
+    )
+  );
+} else {
+  secaoProficienciasTestes.append(
+    criarElemento(
+      "h3",
+      "",
+      "🎲 Perícias e Testes de Resistência"
+    )
+  );
+
+  secaoProficienciasTestes.insertAdjacentHTML(
+    "beforeend",
+    criarEditorProficienciasTestes(proficienciasTestes)
+  );
+}
+
+if (!proficienciasTestes.erro) {
+  const botaoSalvarProficiencias = criarElemento(
+    "button",
+    "",
+    "💾 Salvar Proficiências"
+  );
+
+  botaoSalvarProficiencias.type = "button";
+
+  botaoSalvarProficiencias.addEventListener(
+    "click",
+    async () => {
+      botaoSalvarProficiencias.disabled = true;
+      botaoSalvarProficiencias.textContent = "Salvando...";
+
+      try {
+        const resultado = await salvarEditorProficienciasTestes(
+          id,
+          secaoProficienciasTestes
+        );
+
+        alert(
+          resultado.mensagem ||
+          "Proficiências salvas com sucesso!"
+        );
+
+      } catch (erro) {
+        console.error(
+          "Erro ao salvar proficiências:",
+          erro
+        );
+
+        alert(`Erro: ${erro.message}`);
+
+      } finally {
+        botaoSalvarProficiencias.disabled = false;
+        botaoSalvarProficiencias.textContent =
+          "💾 Salvar Proficiências";
+      }
+    }
+  );
+
+  secaoProficienciasTestes.append(
+    botaoSalvarProficiencias
+  );
+}
+
+conteudo.append(secaoProficienciasTestes);
 
     const cabecalho = criarElemento(
       "div",

@@ -19,6 +19,11 @@ const {
   calcularRestricoesArmadura
 } = require("./characterManager");
 
+const {
+  realizarTestePericia,
+  realizarTesteResistencia
+} = require("./abilityChecks");
+
 function consultarRestricoesParticipante(participante) {
   if (!participante || typeof participante !== "object") {
     return {
@@ -989,6 +994,216 @@ function determinarTipoRolagemAtaque(
   };
 }
 
+function consultarFichaParticipante(participante) {
+  if (
+    !participante ||
+    !participante.fichaPersonagemId
+  ) {
+    return {
+      erro: "Participante sem ficha vinculada."
+    };
+  }
+
+  const resultado = buscarFichaPersonagem(
+    participante.fichaPersonagemId
+  );
+
+  if (resultado?.erro) {
+    return {
+      erro: resultado.erro
+    };
+  }
+
+  const ficha = resultado?.personagem || resultado;
+
+  if (!ficha || !ficha.id) {
+    return {
+      erro: "Ficha do participante não encontrada."
+    };
+  }
+
+  return {
+    participante: participante.nome,
+    fichaPersonagemId: ficha.id,
+    ficha
+  };
+}
+
+function realizarTestePericiaParticipante(
+  participante,
+  pericia,
+  tipoRolagem = "normal",
+  atributoAlternativo = null
+) {
+  const consulta = consultarFichaParticipante(
+    participante
+  );
+
+  if (consulta.erro) {
+    return consulta;
+  }
+
+  const resultado = realizarTestePericia(
+    consulta.ficha,
+    pericia,
+    tipoRolagem,
+    atributoAlternativo
+  );
+
+  if (resultado.erro) {
+    return resultado;
+  }
+
+  return {
+    ...resultado,
+    participante: participante.nome,
+    fichaPersonagemId: consulta.fichaPersonagemId
+  };
+}
+
+function realizarTesteResistenciaParticipante(
+  participante,
+  atributo,
+  tipoRolagem = "normal"
+) {
+  const consulta = consultarFichaParticipante(
+    participante
+  );
+
+  if (consulta.erro) {
+    return consulta;
+  }
+
+  const resultado = realizarTesteResistencia(
+    consulta.ficha,
+    atributo,
+    tipoRolagem
+  );
+
+  if (resultado.erro) {
+    return resultado;
+  }
+
+  return {
+    ...resultado,
+    participante: participante.nome,
+    fichaPersonagemId: consulta.fichaPersonagemId
+  };
+}
+
+function localizarParticipanteBatalha(idBatalha, nomeParticipante) {
+  if (
+    typeof idBatalha !== "string" ||
+    !idBatalha.trim() ||
+    typeof nomeParticipante !== "string" ||
+    !nomeParticipante.trim()
+  ) {
+    return {
+      erro: "ID da batalha ou nome do participante inválido."
+    };
+  }
+
+const resultado = obterBatalha(idBatalha);
+
+
+  if (resultado?.erro) {
+    return {
+      erro: resultado.erro
+    };
+  }
+
+  const batalha = resultado?.batalha || resultado;
+
+  if (!Array.isArray(batalha?.participantes)) {
+    return {
+      erro: "Participantes da batalha indisponíveis."
+    };
+  }
+
+  const participante = batalha.participantes.find(
+    p => p.nome === nomeParticipante
+  );
+
+  if (!participante) {
+    return {
+      erro: "Participante não encontrado na batalha."
+    };
+  }
+
+  return {
+    idBatalha,
+    participante,
+    fichaPersonagemId:
+      participante.fichaPersonagemId ?? null
+  };
+}
+
+function realizarTestePericiaBatalha(
+  idBatalha,
+  nomeParticipante,
+  pericia,
+  tipoRolagem = "normal",
+  atributoAlternativo = null
+) {
+  const localizacao = localizarParticipanteBatalha(
+    idBatalha,
+    nomeParticipante
+  );
+
+  if (localizacao.erro) {
+    return localizacao;
+  }
+
+  const resultado = realizarTestePericiaParticipante(
+    localizacao.participante,
+    pericia,
+    tipoRolagem,
+    atributoAlternativo
+  );
+
+  if (resultado.erro) {
+    return resultado;
+  }
+
+  return {
+    ...resultado,
+    idBatalha,
+    nomeParticipante
+  };
+}
+
+function realizarTesteResistenciaBatalha(
+  idBatalha,
+  nomeParticipante,
+  atributo,
+  tipoRolagem = "normal"
+) {
+  const localizacao = localizarParticipanteBatalha(
+    idBatalha,
+    nomeParticipante
+  );
+
+  if (localizacao.erro) {
+    return localizacao;
+  }
+
+  const resultado = realizarTesteResistenciaParticipante(
+    localizacao.participante,
+    atributo,
+    tipoRolagem
+  );
+
+  if (resultado.erro) {
+    return resultado;
+  }
+
+  return {
+    ...resultado,
+    idBatalha,
+    nomeParticipante
+  };
+}
+
 module.exports = {
   criarBatalha: executarESalvar(criarBatalha),
   obterBatalha,
@@ -1006,5 +1221,11 @@ module.exports = {
   renomearBatalha: executarESalvar(renomearBatalha),
 excluirBatalha: executarESalvar(excluirBatalha),
 consultarRestricoesParticipante,
-determinarTipoRolagemAtaque
+determinarTipoRolagemAtaque,
+consultarFichaParticipante,
+realizarTestePericiaParticipante,
+realizarTesteResistenciaParticipante,
+localizarParticipanteBatalha,
+realizarTestePericiaBatalha,
+realizarTesteResistenciaBatalha
 };

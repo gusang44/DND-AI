@@ -1029,6 +1029,141 @@ function calcularRestricoesArmadura(personagem) {
   };
 }
 
+function prepararProficienciasTestes(personagem) {
+  if (
+    !personagem ||
+    typeof personagem !== "object" ||
+    Array.isArray(personagem)
+  ) {
+    return { erro: "Personagem inválido." };
+  }
+
+  const listaPericias = [
+    "acrobacia",
+    "arcanismo",
+    "atletismo",
+    "atuacao",
+    "enganacao",
+    "furtividade",
+    "historia",
+    "intimidacao",
+    "intuicao",
+    "investigacao",
+    "lidarAnimais",
+    "medicina",
+    "natureza",
+    "percepcao",
+    "persuasao",
+    "prestidigitacao",
+    "religiao",
+    "sobrevivencia"
+  ];
+
+  const listaResistencias = [
+    "forca",
+    "destreza",
+    "constituicao",
+    "inteligencia",
+    "sabedoria",
+    "carisma"
+  ];
+
+  const origem = personagem.proficienciasTestes || {};
+
+  const prepararGrupo = (lista, dados) => {
+    const resultado = {};
+
+    for (const chave of lista) {
+      const valor = dados?.[chave];
+
+      resultado[chave] =
+        typeof valor === "boolean" ? valor : null;
+    }
+
+    return resultado;
+  };
+
+  return {
+    proficienciasTestes: {
+      pericias: prepararGrupo(
+        listaPericias,
+        origem.pericias
+      ),
+      resistencias: prepararGrupo(
+        listaResistencias,
+        origem.resistencias
+      )
+    }
+  };
+}
+
+function salvarProficienciasTestes(personagemId, dados) {
+  const camposValidos = prepararProficienciasTestes({});
+
+  const modelo = camposValidos.proficienciasTestes;
+
+  if (
+    !dados ||
+    typeof dados !== "object" ||
+    Array.isArray(dados) ||
+    !dados.pericias ||
+    !dados.resistencias
+  ) {
+    return { erro: "Dados de proficiências inválidos." };
+  }
+
+  const validarGrupo = (grupo, referencia) => {
+    if (
+      typeof grupo !== "object" ||
+      grupo === null ||
+      Array.isArray(grupo)
+    ) {
+      return false;
+    }
+
+    return Object.keys(referencia).every(
+      chave =>
+        grupo[chave] === null ||
+        typeof grupo[chave] === "boolean"
+    ) && Object.keys(grupo).every(
+      chave => chave in referencia
+    );
+  };
+
+  if (
+    !validarGrupo(dados.pericias, modelo.pericias) ||
+    !validarGrupo(dados.resistencias, modelo.resistencias)
+  ) {
+    return { erro: "Valores de proficiência inválidos." };
+  }
+
+  const personagens = carregarPersonagens();
+
+  const indice = personagens.findIndex(
+    personagem => personagem.id === personagemId
+  );
+
+  if (indice === -1) {
+    return { erro: "Personagem não encontrado." };
+  }
+
+  const normalizado = prepararProficienciasTestes({
+    proficienciasTestes: dados
+  });
+
+  personagens[indice].proficienciasTestes =
+    normalizado.proficienciasTestes;
+
+  salvarPersonagens(personagens);
+
+  return {
+    mensagem: "Proficiências de testes salvas com sucesso.",
+    personagemId,
+    proficienciasTestes:
+      personagens[indice].proficienciasTestes
+  };
+}
+
 module.exports = {
   criarPersonagem,
   listarPersonagens,
@@ -1051,5 +1186,7 @@ module.exports = {
   salvarProficienciasArmadura,
   identificarCategoriaArmadura,
   verificarProficienciasEquipamentos,
-  calcularRestricoesArmadura
+  calcularRestricoesArmadura,
+  prepararProficienciasTestes,
+  salvarProficienciasTestes,
 };

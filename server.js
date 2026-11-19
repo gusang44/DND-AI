@@ -26,8 +26,20 @@ const {
   restaurarAcaoMestre,
   listarBatalhas,
   renomearBatalha,
-excluirBatalha
+  excluirBatalha,
+  realizarTestePericiaBatalha,
+  realizarTesteResistenciaBatalha,
 } = require("./agents/battleManager");
+
+console.log(
+  "DEBUG Perícia:",
+  typeof realizarTestePericiaBatalha
+);
+
+console.log(
+  "DEBUG Resistência:",
+  typeof realizarTesteResistenciaBatalha
+);
 
 const {
   criarPersonagem,
@@ -41,7 +53,8 @@ const {
   calcularDeslocamentoArmadura,
   salvarProficienciasArmadura,
   verificarProficienciasEquipamentos,
-  calcularRestricoesArmadura
+  calcularRestricoesArmadura,
+  salvarProficienciasTestes,
 } = require("./agents/characterManager");
 
 const app = express();
@@ -953,6 +966,82 @@ app.get("/personagens/:id/restricoes-armadura", (req, res) => {
 
     return res.status(500).json({
       erro: "Erro interno ao calcular restrições."
+    });
+  }
+});
+
+ // ==========================================
+ // D&D AI v0.7 — PROFICIÊNCIAS EM TESTES
+ // ==========================================
+
+app.patch("/personagens/:id/proficiencias-testes", (req, res) => {
+  try {
+    const resultado = salvarProficienciasTestes(
+      req.params.id,
+      req.body
+    );
+
+    if (resultado.erro) {
+      const status = resultado.erro ===
+        "Personagem não encontrado." ? 404 : 400;
+
+      return res.status(status).json(resultado);
+    }
+
+    return res.json(resultado);
+
+  } catch (erro) {
+    console.error("Erro ao salvar proficiências de testes:", erro);
+
+    return res.status(500).json({
+      erro: "Erro interno ao salvar proficiências de testes."
+    });
+  }
+});
+ 
+ // ==========================================
+ // D&D AI v0.7 — TESTES DE PERÍCIA EM BATALHA
+ // ==========================================
+
+app.post("/batalha/:id/teste-pericia", (req, res) => {
+  try {
+    const {
+      nomeParticipante,
+      pericia,
+      tipoRolagem = "normal",
+      atributoAlternativo = null
+    } = req.body || {};
+
+    if (
+      typeof nomeParticipante !== "string" ||
+      !nomeParticipante.trim() ||
+      typeof pericia !== "string" ||
+      !pericia.trim()
+    ) {
+      return res.status(400).json({
+        erro: "Nome do participante ou perícia inválidos."
+      });
+    }
+
+    const resultado = realizarTestePericiaBatalha(
+      req.params.id,
+      nomeParticipante,
+      pericia,
+      tipoRolagem,
+      atributoAlternativo
+    );
+
+    if (resultado.erro) {
+      return res.status(400).json(resultado);
+    }
+
+    return res.json(resultado);
+
+  } catch (erro) {
+    console.error("Erro no teste de perícia:", erro);
+
+    return res.status(500).json({
+      erro: "Erro interno ao executar teste de perícia."
     });
   }
 });
