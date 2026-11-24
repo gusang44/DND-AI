@@ -1165,6 +1165,16 @@ function realizarTestePericiaBatalha(
     return resultado;
   }
 
+registrarEvento(
+  idBatalha,
+  "teste_pericia",
+  `${nomeParticipante} realizou um teste de ${pericia}.`,
+  {
+    ...resultado,
+    nomeParticipante
+  }
+);
+
   return {
     ...resultado,
     idBatalha,
@@ -1197,6 +1207,16 @@ function realizarTesteResistenciaBatalha(
     return resultado;
   }
 
+registrarEvento(
+  idBatalha,
+  "teste_resistencia",
+  `${nomeParticipante} realizou um teste de resistência de ${atributo}.`,
+  {
+    ...resultado,
+    nomeParticipante
+  }
+);
+
   return {
     ...resultado,
     idBatalha,
@@ -1226,6 +1246,6 @@ consultarFichaParticipante,
 realizarTestePericiaParticipante,
 realizarTesteResistenciaParticipante,
 localizarParticipanteBatalha,
-realizarTestePericiaBatalha,
-realizarTesteResistenciaBatalha
+realizarTestePericiaBatalha: executarESalvar(realizarTestePericiaBatalha),
+realizarTesteResistenciaBatalha: executarESalvar(realizarTesteResistenciaBatalha)
 };

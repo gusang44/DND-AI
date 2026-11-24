@@ -353,6 +353,41 @@ async function carregarHistorico(id) {
           (d.critico ? " | CRÍTICO!" : "");
       }
 
+if (
+  evento.tipo === "teste_pericia" ||
+  evento.tipo === "teste_resistencia"
+) {
+  const d = evento.dados || {};
+
+  const dadosRolados = Array.isArray(d.dadosRolados)
+    ? d.dadosRolados.join(", ")
+    : "—";
+
+  const tiposRolagem = {
+    normal: "Normal",
+    vantagem: "Vantagem",
+    desvantagem: "Desvantagem"
+  };
+
+  detalhes =
+    `\n  Atributo: ${d.atributo ?? "—"}` +
+    ` | Rolagem: ${tiposRolagem[d.tipoRolagem] || "—"}` +
+    `\n  D20: ${dadosRolados}` +
+    ` | Dado utilizado: ${d.dadoUtilizado ?? "—"}` +
+    `\n  Modificador: ${formatarModificador(d.modificadorAtributo ?? 0)}` +
+    ` | Proficiência: ${formatarModificador(d.bonusProficiencia ?? 0)}` +
+    `\n  Bônus total: ${formatarModificador(d.bonusTotal ?? 0)}` +
+    ` | Resultado: ${d.total ?? "—"}`;
+
+  if (d.desvantagemArmadura) {
+    detalhes += "\n  🛡️ Restrição por armadura aplicada.";
+  }
+
+  if (d.verificacaoPendente) {
+    detalhes += "\n  ⚠️ Verificação de proficiência pendente.";
+  }
+}
+
       return `[${horario}] ${evento.descricao}${detalhes}`;
     });
 
@@ -2420,3 +2455,59 @@ async function atualizarAvisosRestricoesArmadura(
     return secaoAtual;
   }
 }
+
+// ==========================================
+// D&D AI v0.7 — PAINEL DE TESTES D20
+// ==========================================
+
+const periciasD20 = {
+  acrobacia: "Acrobacia",
+  arcanismo: "Arcanismo",
+  atletismo: "Atletismo",
+  atuacao: "Atuação",
+  enganacao: "Enganação",
+  furtividade: "Furtividade",
+  historia: "História",
+  intimidacao: "Intimidação",
+  intuicao: "Intuição",
+  investigacao: "Investigação",
+  lidarAnimais: "Lidar com Animais",
+  medicina: "Medicina",
+  natureza: "Natureza",
+  percepcao: "Percepção",
+  persuasao: "Persuasão",
+  prestidigitacao: "Prestidigitação",
+  religiao: "Religião",
+  sobrevivencia: "Sobrevivência"
+};
+
+const resistenciasD20 = {
+  forca: "Força",
+  destreza: "Destreza",
+  constituicao: "Constituição",
+  inteligencia: "Inteligência",
+  sabedoria: "Sabedoria",
+  carisma: "Carisma"
+};
+
+function atualizarOpcoesTesteD20() {
+  const tipo = $("tipoTesteD20").value;
+  const seletor = $("nomeTesteD20");
+
+  const opcoes = tipo === "pericia"
+    ? periciasD20
+    : resistenciasD20;
+
+  seletor.replaceChildren();
+
+  for (const [valor, nome] of Object.entries(opcoes)) {
+    seletor.add(new Option(nome, valor));
+  }
+}
+
+$("tipoTesteD20").addEventListener(
+  "change",
+  atualizarOpcoesTesteD20
+);
+
+atualizarOpcoesTesteD20();

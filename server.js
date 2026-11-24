@@ -54,7 +54,7 @@ const {
   salvarProficienciasArmadura,
   verificarProficienciasEquipamentos,
   calcularRestricoesArmadura,
-  salvarProficienciasTestes,
+  salvarProficienciasTestes
 } = require("./agents/characterManager");
 
 const app = express();
@@ -1042,6 +1042,67 @@ app.post("/batalha/:id/teste-pericia", (req, res) => {
 
     return res.status(500).json({
       erro: "Erro interno ao executar teste de perícia."
+    });
+  }
+});
+
+// ==========================================
+// D&D AI v0.7 — TESTES DE RESISTÊNCIA
+// ==========================================
+
+app.post("/batalha/:id/teste-resistencia", (req, res) => {
+  try {
+    const {
+      nomeParticipante,
+      atributo,
+      tipoRolagem = "normal"
+    } = req.body || {};
+
+    const atributosValidos = [
+      "forca",
+      "destreza",
+      "constituicao",
+      "inteligencia",
+      "sabedoria",
+      "carisma"
+    ];
+
+    if (
+      typeof nomeParticipante !== "string" ||
+      !nomeParticipante.trim() ||
+      !atributosValidos.includes(atributo)
+    ) {
+      return res.status(400).json({
+        erro: "Nome do participante ou atributo de resistência inválidos."
+      });
+    }
+
+    if (
+      !["normal", "vantagem", "desvantagem"].includes(tipoRolagem)
+    ) {
+      return res.status(400).json({
+        erro: "Tipo de rolagem inválido."
+      });
+    }
+
+    const resultado = realizarTesteResistenciaBatalha(
+      req.params.id,
+      nomeParticipante,
+      atributo,
+      tipoRolagem
+    );
+
+    if (resultado.erro) {
+      return res.status(400).json(resultado);
+    }
+
+    return res.json(resultado);
+
+  } catch (erro) {
+    console.error("Erro no teste de resistência:", erro);
+
+    return res.status(500).json({
+      erro: "Erro interno ao executar teste de resistência."
     });
   }
 });
