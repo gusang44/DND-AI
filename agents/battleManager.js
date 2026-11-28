@@ -1033,7 +1033,8 @@ function realizarTestePericiaParticipante(
   participante,
   pericia,
   tipoRolagem = "normal",
-  atributoAlternativo = null
+  atributoAlternativo = null,
+  cd = null
 ) {
   const consulta = consultarFichaParticipante(
     participante
@@ -1047,7 +1048,8 @@ function realizarTestePericiaParticipante(
     consulta.ficha,
     pericia,
     tipoRolagem,
-    atributoAlternativo
+    atributoAlternativo,
+    cd
   );
 
   if (resultado.erro) {
@@ -1064,7 +1066,8 @@ function realizarTestePericiaParticipante(
 function realizarTesteResistenciaParticipante(
   participante,
   atributo,
-  tipoRolagem = "normal"
+  tipoRolagem = "normal",
+  cd = null
 ) {
   const consulta = consultarFichaParticipante(
     participante
@@ -1077,7 +1080,8 @@ function realizarTesteResistenciaParticipante(
   const resultado = realizarTesteResistencia(
     consulta.ficha,
     atributo,
-    tipoRolagem
+    tipoRolagem,
+    cd
   );
 
   if (resultado.erro) {
@@ -1143,7 +1147,8 @@ function realizarTestePericiaBatalha(
   nomeParticipante,
   pericia,
   tipoRolagem = "normal",
-  atributoAlternativo = null
+  atributoAlternativo = null,
+  cd = null
 ) {
   const localizacao = localizarParticipanteBatalha(
     idBatalha,
@@ -1158,7 +1163,8 @@ function realizarTestePericiaBatalha(
     localizacao.participante,
     pericia,
     tipoRolagem,
-    atributoAlternativo
+    atributoAlternativo,
+    cd
   );
 
   if (resultado.erro) {
@@ -1186,7 +1192,8 @@ function realizarTesteResistenciaBatalha(
   idBatalha,
   nomeParticipante,
   atributo,
-  tipoRolagem = "normal"
+  tipoRolagem = "normal",
+  cd = null
 ) {
   const localizacao = localizarParticipanteBatalha(
     idBatalha,
@@ -1200,7 +1207,8 @@ function realizarTesteResistenciaBatalha(
   const resultado = realizarTesteResistenciaParticipante(
     localizacao.participante,
     atributo,
-    tipoRolagem
+    tipoRolagem,
+    cd
   );
 
   if (resultado.erro) {

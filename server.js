@@ -1009,7 +1009,8 @@ app.post("/batalha/:id/teste-pericia", (req, res) => {
       nomeParticipante,
       pericia,
       tipoRolagem = "normal",
-      atributoAlternativo = null
+      atributoAlternativo = null,
+      cd = null
     } = req.body || {};
 
     if (
@@ -1023,12 +1024,22 @@ app.post("/batalha/:id/teste-pericia", (req, res) => {
       });
     }
 
+if (
+  cd !== null &&
+  (!Number.isInteger(cd) || cd < 0)
+) {
+  return res.status(400).json({
+    erro: "Classe de Dificuldade inválida."
+  });
+}
+
     const resultado = realizarTestePericiaBatalha(
       req.params.id,
       nomeParticipante,
       pericia,
       tipoRolagem,
-      atributoAlternativo
+      atributoAlternativo,
+      cd
     );
 
     if (resultado.erro) {

@@ -2511,3 +2511,162 @@ $("tipoTesteD20").addEventListener(
 );
 
 atualizarOpcoesTesteD20();
+
+$("executarTesteD20").addEventListener(
+  "click",
+  async () => {
+    const mensagem = $("resultadoTesteD20");
+    const botao = $("executarTesteD20");
+
+    if (!batalhaAtiva) {
+      mensagem.textContent =
+        "Carregue uma batalha primeiro.";
+      return;
+    }
+
+    const nomeParticipante = $("personagem").value;
+    const tipo = $("tipoTesteD20").value;
+    const nomeTeste = $("nomeTesteD20").value;
+    const tipoRolagem = $("tipoRolagemD20").value;
+    if (!nomeParticipante || !nomeTeste) {
+      mensagem.textContent =
+        "Selecione um personagem e um teste.";
+      return;
+    }
+
+    const idBatalha = batalhaAtiva.id;
+
+    const rota =
+      `/batalha/${encodeURIComponent(idBatalha)}/` +
+      (tipo === "pericia"
+        ? "teste-pericia"
+        : "teste-resistencia");
+
+    const dados = {
+      nomeParticipante,
+      tipoRolagem
+    };
+
+    if (tipo === "pericia") {
+      dados.pericia = nomeTeste;
+    } else {
+      dados.atributo = nomeTeste;
+    }
+
+    botao.disabled = true;
+    mensagem.textContent = "Rolando D20...";
+
+    try {
+      const resultado = await requisicao(
+        rota,
+        "POST",
+        dados
+      );
+
+      
+const tiposRolagem = {
+  normal: "Normal",
+  vantagem: "Vantagem",
+  desvantagem: "Desvantagem"
+};
+
+const nomeExibicao = tipo === "pericia"
+  ? periciasD20[nomeTeste]
+  : resistenciasD20[nomeTeste];
+
+const linhas = [
+  `🎲 ${nomeExibicao}`,
+  `Personagem: ${nomeParticipante}`,
+  `Rolagem: ${tiposRolagem[resultado.tipoRolagem]}`,
+  `Dados rolados: ${resultado.dadosRolados.join(", ")}`,
+  `Dado utilizado: ${resultado.dadoUtilizado}`,
+  `Modificador: ${formatarModificador(resultado.modificadorAtributo)}`,
+  `Proficiência: ${formatarModificador(resultado.bonusProficiencia)}`,
+  `Bônus total: ${formatarModificador(resultado.bonusTotal)}`,
+  `RESULTADO FINAL: ${resultado.total}`
+];
+
+if (resultado.desvantagemArmadura) {
+  linhas.push(
+    "🛡️ Restrição por armadura aplicada."
+  );
+}
+
+if (resultado.verificacaoPendente) {
+  linhas.push(
+    "⚠️ Verificação de proficiência ou armadura pendente."
+  );
+}
+
+mensagem.style.whiteSpace = "pre-line";
+mensagem.textContent = linhas.join("\n");
+
+animarDadoTeste(resultado);
+
+      await carregarHistorico(idBatalha);
+
+    } catch (erro) {
+      mensagem.textContent =
+        `Erro: ${erro.message}`;
+
+    } finally {
+      botao.disabled = false;
+    }
+  }
+);
+
+// Animação do D20 para perícias e resistências
+function animarDadoTeste(resultado) {
+  const dado = $("d20");
+  const valor = $("diceValue");
+  const status = $("diceStatus");
+  const detalhes = $("diceDetails");
+
+  if (!dado || !valor || !status || !detalhes) {
+    return;
+  }
+
+  const numero = resultado.dadoUtilizado;
+
+  if (!Number.isInteger(numero)) {
+    return;
+  }
+
+  dado.classList.remove(
+    "rolling",
+    "critical",
+    "failure"
+  );
+
+  void dado.offsetWidth;
+
+  valor.textContent = numero;
+  dado.classList.add("rolling");
+
+  const tiposRolagem = {
+    normal: "Normal",
+    vantagem: "Vantagem",
+    desvantagem: "Desvantagem"
+  };
+
+  const nomeTeste =
+    resultado.tipo === "resistencia"
+      ? resistenciasD20[resultado.atributo]
+      : periciasD20[resultado.pericia];
+
+  status.textContent =
+    `🎲 ${nomeTeste || "Teste de D20"} — ` +
+    tiposRolagem[resultado.tipoRolagem];
+
+  detalhes.textContent =
+    `Dados: ${resultado.dadosRolados.join(", ")} | ` +
+    `Utilizado: ${numero} | ` +
+    `Bônus: ${formatarModificador(resultado.bonusTotal)} | ` +
+    `Total: ${resultado.total}`;
+
+  dado.addEventListener(
+    "animationend",
+    () => dado.classList.remove("rolling"),
+    { once: true }
+  );
+}

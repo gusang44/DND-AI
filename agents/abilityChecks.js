@@ -479,7 +479,8 @@ function realizarTestePericia(
   personagem,
   pericia,
   tipoRolagem = "normal",
-  atributoAlternativo = null
+  atributoAlternativo = null,
+  cd = null
 ) {
   const identificacao = identificarAtributoPericia(
     pericia
@@ -504,8 +505,18 @@ function realizarTestePericia(
     return resultado;
   }
 
+const avaliacaoCD = avaliarClasseDificuldade(
+  resultado.total,
+  cd
+);
+
+if (avaliacaoCD.erro) {
+  return avaliacaoCD;
+}
+
   return {
     ...resultado,
+    ...avaliacaoCD,
     pericia,
     atributoPadrao: identificacao.atributo,
     atributoAlternativoUtilizado:
@@ -516,7 +527,8 @@ function realizarTestePericia(
 function realizarTesteResistencia(
   personagem,
   atributo,
-  tipoRolagem = "normal"
+  tipoRolagem = "normal",
+  cd = null
 ) {
   const atributosValidos = [
     "forca",
@@ -541,13 +553,51 @@ function realizarTesteResistencia(
     tipoRolagem
   );
 
+const avaliacaoCD = avaliarClasseDificuldade(
+  resultado.total,
+  cd
+);
+
+if (avaliacaoCD.erro) {
+  return avaliacaoCD;
+}
+
   if (resultado.erro) {
     return resultado;
   }
 
   return {
     ...resultado,
+    ...avaliacaoCD,
     testeResistencia: true
+  };
+}
+
+function avaliarClasseDificuldade(total, cd = null) {
+  if (!Number.isFinite(total)) {
+    return {
+      erro: "Resultado do teste inválido."
+    };
+  }
+
+  if (cd === null || cd === undefined) {
+    return {
+      cd: null,
+      sucesso: null,
+      margem: null
+    };
+  }
+
+  if (!Number.isInteger(cd) || cd < 0) {
+    return {
+      erro: "Classe de Dificuldade inválida."
+    };
+  }
+
+  return {
+    cd,
+    sucesso: total >= cd,
+    margem: total - cd
   };
 }
 
@@ -563,5 +613,6 @@ module.exports = {
     realizarTesteComProficiencia,
     identificarAtributoPericia,
     realizarTestePericia,
-    realizarTesteResistencia
+    realizarTesteResistencia,
+    avaliarClasseDificuldade,
 };
